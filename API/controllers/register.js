@@ -9,6 +9,7 @@ const mysql = require('mysql');
 const jwt = require('jsonwebtoken');
 //To require bcrypt
 const bcrypt = require('bcrypt');
+const exp = require('constants');
 
 
 
@@ -39,7 +40,7 @@ const register = async (req, res, next) => {
       message: "Data received"
     };
   
-    const { user, email, password } = req.body;
+    const { username, email, password } = req.body;
   
     try {
       //To check whether that email already exists
@@ -50,20 +51,43 @@ const register = async (req, res, next) => {
         return res.status(409).json(response);
       }
       //To check if the user already exists
-      const existUser = await checkUserExists(user);
+      const existUser = await checkUserExists(username);
         if (existUser) {
             response.status = "error";
             response.message = "This user already exists";
             return res.status(409).json(response);
         }
         //To insert the data into the database
-        const insertData = await insertUser(user, email, password);
+        const insertData = await insertUser(username, email, password);
         if (insertData) {
             response.status = "success";
             response.message = "User registered successfully";
             //To create a token
-            const token = jwt.sign({ user: user }, process.env.ACCESS_TOKEN_SECRET);
-            response.token = token;
+            const token = jwt.sign(
+              { username: username }, 
+              process.env.ACCESS_TOKEN_SECRET);
+            response.token = token,
+            {expiresIn: 30}
+            ;
+            //Create refresh token
+            const refreshToken = jwt.sign(
+              { username: username },
+              process.env.REFRESH_TOKEN_SECRET
+              ,{expiresIn: '1d'}
+            );
+            //To save the refresh token in the database in the tokens table
+            const saveToken = await saveRefreshToken(username, refreshToken);
+            if (!saveToken) {
+              response.status = "error";
+              response.message = "Error in saving the refresh token";
+              return res.status(500).json(response);
+            }
+           //To send the refresh token in the cookie
+            res.cookie('jwt', refreshToken, {
+              httpOnly: true,
+              maxAge: 24 * 60 * 60 * 1000 // 1 day
+            });
+
             return res.status(200).json(response);
         }
      
@@ -128,6 +152,20 @@ const register = async (req, res, next) => {
       userID += charCode * Math.pow(31, i);
     }
     return userID.toString();
+  }
+
+  //Function to save the refresh token in the database in the tokens table,
+  //Tokens table has the fields userID and refreshToken
+  async function saveRefreshToken(userID, refreshToken) {
+    return new Promise((resolve, reject) => {
+      db.query('INSERT INTO tokens SET ?', { userID: userID, refreshToken: refreshToken }, (err, result) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(true);
+        }
+      });
+    });
   }
 
 module.exports = { register };
