@@ -18,11 +18,11 @@ const createTokenStorage = () => {
 // Create an instance of in-memory token storage
 const tokenStorage = createTokenStorage();
 
+const userDiv=document.getElementsByClassName('user')[0];
 // Event listener for the registration form
 const form = document.getElementById('registration-form');
 form.addEventListener('submit', function(event) {
   event.preventDefault(); // Prevent the default form submission
-
   // Send an asynchronous request to the server
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/register');
@@ -35,6 +35,7 @@ form.addEventListener('submit', function(event) {
       alert('Registration successful');
       form.reset(); // Reset the form fields
       tokenStorage.setToken(response.token);
+      userDiv.innerHTML=document.getElementById("username").value;
     } else {
       document.getElementById('errors').innerHTML = response.message;
     }
@@ -52,36 +53,47 @@ signupForm.addEventListener('submit', function(event) {
   event.preventDefault(); // Prevent the default form submission behavior
 
   // Retrieve the form data
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
+  const username = document.getElementById('Logusername').value;
+  const password = document.getElementById('Logpassword').value;
 
   // Create a payload object with the form data
   const payload = {
-    email: email,
+    username: username,
     password: password
   };
-
     // Check if there is a token in the in-memory storage
     const token = tokenStorage.getToken();
-
-  // Make the AJAX request to the server
-  fetch('/login', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' +  token
-    },
-    body: JSON.stringify(payload)
-  })
-    .then(response => response.json())
-    .then(data => {
-      // Handle the response from the server
-      console.log(data);
-      // Perform any necessary actions based on the response
+    console.log(`Stored Token: ${token}`);
+    fetch('/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + tokenStorage.getToken()
+      },
+      body: JSON.stringify(payload)
     })
-    .catch(error => {
-      // Handle any errors that occurred during the request
-      console.error(error);
-    });
+      .then(response => response.json())
+      .then(data => {
+        console.log(data);
+        let token = data.accessToken;
+        if(data.status === "error"){
+          alert(data.message);
+          userDiv.innerHTML="";
+          return;
+        }
+        if(token){
+        tokenStorage.setToken(token);
+        alert("Token stored successfully");
+        }
+        else{
+          alert("Verified by token");
+        }
+        userDiv.innerHTML=username;
+        // Perform any necessary actions based on the response
+      })
+      .catch(error => {
+        // Handle any errors that occurred during the request
+        console.error(error);
+      });
+    
 });
-// Compare this snippet from API\controllers\login.js:
