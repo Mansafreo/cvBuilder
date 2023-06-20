@@ -9,30 +9,9 @@ const mysql = require('mysql');
 const jwt = require('jsonwebtoken');
 //To require bcrypt
 const bcrypt = require('bcrypt');
-const exp = require('constants');
 
-
-
-//To connect to mysql
-const db = mysql.createConnection({
-    host: process.env.HOST,
-    password: process.env.PASSWORD,
-    user:  process.env.USER,
-    database: process.env.DATABASE
-});
-
-// console.log(process.env.HOST);
-
-db.connect((err) => {
-    if (err) {
-        console.log(err);
-        console.log("Error in connecting to database");
-        return;
-    }
-    else {
-        console.log("Connected to database");
-    }
-});
+//To require the database connection
+const db = require('../models/db');
 
 const register = async (req, res, next) => {
     let response = {
@@ -41,7 +20,6 @@ const register = async (req, res, next) => {
     };
   
     const { username, email, password } = req.body;
-  
     try {
       //To check whether that email already exists
       const exist = await checkEmailExists(email);
@@ -58,7 +36,7 @@ const register = async (req, res, next) => {
             return res.status(409).json(response);
         }
         //To insert the data into the database
-        const insertData = await insertUser(username, email, password);
+        const insertData = await insertUser(username, email, password);//To insert the data into the database
         if (insertData) {
             response.status = "success";
             response.message = "User registered successfully";
