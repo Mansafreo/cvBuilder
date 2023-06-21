@@ -11,9 +11,10 @@ const db = require('../models/db');
 const bcrypt = require('bcrypt');
 //To require the function to check if the token is blacklisted
 const {checkTokenInDB}=require('../controllers/logout');
+const { start } = require('repl');
 
 //Function to verify JWT
-const verifyJWT = (req, res, next) => {
+const verifyJWT =async  (req, res, next) => {
     let response = {
         status: "success",
         message: "Data received"
@@ -25,8 +26,8 @@ const verifyJWT = (req, res, next) => {
     }
     const token1 = authHeader.split(' ')[1];
     //To check if the token is blacklisted
-    const blacklisted=checkTokenInDB(token1);
-    if(blacklisted){
+    const blacklisted= await checkTokenInDB(token1);//Returns false if the token is blacklisted
+    if(!blacklisted){
         response.status = "error";
         response.message = "Token lifetime expired";
         response.data = {
@@ -36,10 +37,14 @@ const verifyJWT = (req, res, next) => {
     }
     //To check if the token is expired
     if(isTokenExpired(token1)){
+        let startTime=jwt.decode(token1).iat;
+        let endTime=jwt.decode(token1).exp;
         response.status = "error";
         response.message = "Token expired";
         response.data = {
-            token: token1
+            token: token1,
+            startTime:startTime,
+            endTime:endTime
         }
         return res.status(403).json(response);
     }
@@ -101,7 +106,7 @@ const login =async (req, res) => {
       }
     }
     //To create a token
-    const accessToken = jwt.sign({ username: username }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: process.env.TOKEN_EXPIRY_TIME});
+    const accessToken = jwt.sign({ username: username }, process.env.ACCESS_TOKEN_SECRET, { expiresIn:process.env.TOKEN_EXPIRY_TIME });
     response.status = "success";
     response.message = "User successfully logged in";
     response.accessToken = accessToken;
