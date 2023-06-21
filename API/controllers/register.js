@@ -35,8 +35,9 @@ const register = async (req, res, next) => {
             response.message = "This user already exists";
             return res.status(409).json(response);
         }
+        let generatedID = generateID(username);
         //To insert the data into the database
-        const insertData = await insertUser(username, email, password);//To insert the data into the database
+        const insertData = await insertUser(username, email, password,generatedID);//To insert the data into the database
         if (insertData) {
             response.status = "success";
             response.message = "User registered successfully";
@@ -54,7 +55,7 @@ const register = async (req, res, next) => {
               ,{expiresIn: '1d'}
             );
             //To save the refresh token in the database in the tokens table
-            const saveToken = await saveRefreshToken(username, refreshToken);
+            const saveToken = await saveRefreshToken(generatedID, refreshToken);
             if (!saveToken) {
               response.status = "error";
               response.message = "Error in saving the refresh token";
@@ -81,8 +82,7 @@ const register = async (req, res, next) => {
     }
   };
   //To insert the data into the database
-    async function insertUser(username, email, password) {
-        let generatedID = generateID(username);
+    async function insertUser(username, email, password,generatedID) {
         let hashedPassword = await bcrypt.hash(password, 10);//To hash the password
         password = hashedPassword;
         return new Promise((resolve, reject) => {
